@@ -1,0 +1,50 @@
+Exploratory Data Analysis
+Works Cited 
+
+Data sources:
+Red Wine Quality(provided by the Assignment prompt)
+ P. Cortez, A. Cerdeira, F. Almeida, T. Matos and J. Reis. Modeling wine preferences by data mining from physicochemical properties. In Decision Support Systems, Elsevier, 47(4):547-553. ISSN: 0167-9236. Available at: [@Elsevier] http://dx.doi.org/10.1016/j.dss.2009.05.016 [Pre-press (pdf)] http://www3.dsi.uminho.pt/pcortez/winequality09.pdf [bib] http://www3.dsi.uminho.pt/pcortez/dss09.bib
+
+Production 1999-2016.xls 
+Production Vinho Verde and Vinho regional Minho
+url: http://www.vinhoverde.pt/en/statistics
+
+
+Resources
+
+Mangiafico, S.S. 2016. Summary and Analysis of Extension Program Evaluation in R, version 1.9.0 rcompanion.org/handbook/. (Pdf version: rcompanion.org/documents/RHandbookProgramEvaluation.pdf.)
+
+DataCamp. URL; https://www.datacamp.com
+
+https://cran.r-project.org/web/packages/rgl/vignettes/WebGL.html
+
+A picture is worth a thousand words. (2017, September 14). In Wikipedia, The Free Encyclopedia. Retrievedm 19:03, October 16, 2017 from https://en.wikipedia.org/w/index.php?title=A_picture_is_worth_a_thousand_words&oldid=800538581
+
+
+R packages
+
+Andreas Schulz (2013). epade: Easy Plots. R package version 0.3.8.
+https://CRAN.R-project.org/package=epade
+
+Brian G. Peterson and Peter Carl (2014). PerformanceAnalytics: Econometric tools for performance and risk analysis. R package version 1.4.3541. https://CRAN.R-project.org/package=PerformanceAnalytics
+
+David Robinson (2017). broom: Convert Statistical Analysis Objects into Tidy Data Frames. R package version 0.4.2.  https://CRAN.R-project.org/package=broom
+
+Daniel Adler, Duncan Murdoch and others (2017). rgl: 3D Visualization Using OpenGL. R package version
+  0.98.1. https://CRAN.R-project.org/package=rgl
+
+Hadley Wickham and Romain Francois (2016). dplyr: A Grammar of Data Manipulation. R package version 0.5.0. https://CRAN.R-project.org/package=dplyr
+
+Hadley Wickham (2017). tidyr: Easily Tidy Data with 'spread()' and 'gather()' Functions. R package version 0.6.3. https://CRAN.R-project.org/package=tidyr
+
+H. Wickham. ggplot2: Elegant Graphics for Data Analysis. Springer-Verlag New York, 2009.
+
+Revelle, W. (2017) psych: Procedures for Personality and Psychological Research, Northwestern University, Evanston, Illinois, USA, https://CRAN.R-project.org/package=psych Version = 1.7.5.
+
+Salvatore Mangiafico (2017). rcompanion: Functions to Support Extension Education Program Evaluation. R package version 1.5.7. https://CRAN.R-project.org/package=rcompanion
+
+
+
+
+
+
