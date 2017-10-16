@@ -1,0 +1,428 @@
+---
+title: "Exploratory Data Analysis"
+author: "AIMOD"
+date: "October 8, 2017"
+output: 
+  html_document:
+    includes:
+      in_header: movie_r.html
+    toc: true
+    toc_depth: 4
+    number_sections: true
+    highlight: pygments
+    theme: spacelab
+    keep_md: true
+    fig_caption: true
+    code_folding: hide
+    df_print: paged
+
+---
+
+##Abstract
+
+"Use a picture. It's worth a thousand words", an English idiomatic expression appeared in a 1911's newspaper that fits perfectly the essence of the present assignment. Exploring a data set and conveying statistical meaningful information through variegated displays is the ultimate intention. Focus is less in modeling, more in the visual expression through the R language.
+
+The data set chosen to showcase current R skills describes 12 chemical components of *Vinho Verde Tinto*. A light, crispy young wine produced in the north region of Portugal. Extra information needed to round our last plot, has been downloaded from the official site. R codes have been enclosed, but the display has been left to user's discretion.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, comment=NA}
+suppressMessages(library(readr))
+suppressMessages(library(psych))
+suppressMessages(library(PerformanceAnalytics))
+suppressMessages(library(rcompanion))
+suppressMessages(library(epade))
+suppressMessages(library(dplyr))
+suppressMessages(library(tidyr))
+suppressMessages(library(ggplot2))
+suppressMessages(library(FSA))
+suppressMessages(library(vcd))
+suppressMessages(library(viridis))
+suppressMessages(library(ggthemes))
+suppressMessages(library(gridExtra))
+suppressMessages(library(ggfortify))
+suppressMessages(library(scatterplot3d))
+suppressMessages(library(rgl))
+suppressMessages(library(readxl))
+suppressMessages(library(plotly))
+suppressMessages(library(maps))
+suppressMessages(library(knitr))
+```
+
+## The Data Set
+
+The data set contains 1599 observations and 13 numeric variables. The first caution call comes from the skew's and kurtosis 'columns displayed by the following output. Both measures provide invaluable clues to understand the shape of the distribution. The former is all about symmetry whereas the later focuses on the *tailedeness* of the data.  Applying the conventional benchmarks ^[Kurtosis: k > 3 , leptokurtic, k < 3 platykurtic. Skewness: k > 1 right-skewed, k < -1 left-skewed] leads to an estimation of the prevailing right-skewness in the univariate distributions of five of the components. Four of them are heavily leptokurtic, with one exception. As a consequence, the propensity of outliers must be reckoned, but without further information about the nature of the collected observations; removing them might cause to overpass noteworthy wines within a given cluster. Outliers would be present through all subsequent analysis.
+
+```{r  cols.print = 5, rows.print = 5, echo=??RUE, message=FALSE, warning=FALSE, comment=NA}
+#Load the Data
+data <- read_csv("wineQualityReds.csv") #readr
+#headTail(data)
+obj <- describe(data[, 2:13])#psych
+kable(obj, caption = "Table 1.Summary Statistics", digits = 3)
+             
+```
+
+### Assessing Normality
+
+The size of the following display is proportional to the amount of information conveyed by it. The univariate distributions with the exception of density, pH, and quality are highly right-skewed. A short statement, but with huge implications about the necessity to normalize the data, or to draw upon non-parametric tests.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE,comment=NA,fig.cap= paste("Figure 1.Normal Histograms Plot")}
+# Assessing Normality, Shape of the Distribution
+#class(data)  #class: tbl_df, tbl, data.frame
+data_1 = as.data.frame(data[ ,2:13], na.omit = TRUE)# convert to a data.frame as required by following plot
+#class(data_1) # class: data.frame
+par(mfrow = c(3, 4))
+for(i in 1:12){
+  plotNormalHistogram(data_1[,i], main = names(data_1)[i])#rcompanion
+}
+```
+
+###Assessing Collinearity
+
+The object of the correlation chart is straightforward: to detect variables containing the same information about the dependent variable. Besides implying redundancy, collinearity among the explanatory variables would tend to produce less precise model than if the predictors were uncorrelated. Once more, an R built-in functions makes extremely easy to capture such a vital insight. The stars represents the significance levels ^[1 = p < 0.05, 2 = p < 0.01, 3 = p < 0.001].
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA, fig.cap= paste("Figure 2.Correlation Chart")}
+#Assessing Collinearity
+chart.Correlation(data[,2:13], method = "pearson", histogram = TRUE, pch = 16) #default pearson, PerformanceAnalytics
+```
+
+We know by now that the variables chloride and alcohol would not pair well in a regression model, neither those sharing sulfur dioxide. Residual sugar might work well with alcohol, or chloride, but not with the sulfurs. if the current assignment's goal would be more about statistical modeling, than merely exploratory data analysis; interactions among the mentioned predictors should be quantified.
+
+### Missing Data
+
+The enclosed display is self-explanatory; missing data is meaningless. No further data tidying is needed 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA, fig.cap=paste("Figure 3.Missiogram")}
+#Assessing Missingness 
+missiogram.ade(data, col = "darkred") # epade
+
+```
+
+### Mean Comparison across Ratings
+
+The next step is to understand how a given explanatory variable behaves across the different ratings. Being a meaningful predictor would imply that the result of mapping that attribute across the different qualifications is not a flat line, but that of a significant increase or decrease occur  when tracing the line. To this end, the data has been transformed to a long format, and grouped by attribute and qualification. The abbreviated output is as follows:
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA}
+d_feature <- data %>%
+   gather(profile, value, 2:12) %>%
+   mutate(Rating= factor(quality, levels = unique(quality)), 
+          Attribute = factor(profile, levels = unique(profile))) %>%
+   select(-X1, -quality, -profile)%>%
+   group_by(Rating, Attribute)
+#headTail(d_feature)
+#levels(d_feature$feature)
+s_feature <- Summarize(value ~ Rating + Attribute, data= d_feature) #FSA
+kable(head(s_feature, 12)[,c(1,2,3,5,6)], caption = "table 2.Long Data")
+```
+
+Seeing the data, two caveats immediately emerge: 
+
+* Is the mean the appropriate central measure of tendency to be applied to the data set? Based on *Figure 1. Normal Histograms Plot* a more robust measure would be a better approach.
+
+*	As per last histogram of previously mentioned display, there is a significant difference in sample size in rating 3, and 8 when compared to rating 5 and 6.
+
+For assignment's sake, the mean will be the measure of choice, and later on, adequate technics would be employed to lessen uncertainty concerning the sample size.
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA, fig.cap= paste("Figure 3.Mean Comparison")}
+p_fm <- ggplot(s_feature, aes( Rating, mean, color = Rating, group = 1))+
+  geom_point()+
+  geom_line()+
+  facet_wrap(~Attribute)+
+  ggtitle("Mean Comparison by Attribute across Rating") +
+  theme_stata(scheme = "s2mono") + #ggthemes
+  scale_colour_stata("mono")
+p_fm
+```
+
+At glance, differences are observable in total.sulfur.dioxide, sulfur.dioxide, fixed.acidity, and alcohol, in decreasing order. The rest of the potential explanatory variable present, at sight, little or no variability across the different ratings. A disappointed fact as they hardly would account for good predictions of the dependent variable.
+
+### Main Takeaways from Plots.2
+
+*	Univariate distributions are in a greater part, highly right-skewed. A fact that presupposes data transformation.
+
+*	The best predictor candidate, so far, is the variable total.sulfur.dioxide; to be combined either with alcohol or chloride, but not both.
+
+*	The distribution of remaining variables are rather similar. An unfortunate event as they would hardly contribute to improve our R-squared.
+
+##Digging Further
+
+### Checking Residuals
+
+Given above findings, I deem wise to carry a residual value's analysis of each attribute conditioned by quality level in order to fully grasp the possible deviations from the independence model. Taking advantage of our long data format where attributes and quality have been already mutated into categorical variables, a high-dimensional contingency table is generated.
+Purposely, the data has not been ordered in the interest to spot the effect size in each dimension.
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA, fig.cap= paste("Figure 4.Association Plot")}
+#class(d_feature)
+#class(d_feature)
+t_feature <- xtabs(value ~ Rating + Attribute, data = d_feature)
+assoc(t_feature , shade = TRUE,  main = "Checking Residuals",
+      labeling_args = list(abbreviate = c(Attribute = 2), 
+                           split_vertical = TRUE))
+```
+
+The baseline represents normality. Any tile above or below that benchmark appoints to a deviation from independence, and congruently, the residual's sign. Dimension and hue implies the effect size. It is evident that the attribute which really set the quality levels apart is, as previously hinted by the first plots, total.dioxide,sulfur. Curiously enough, the sign is inverted in rating 5 compared with the rest. Major discrepancies occur in level 5, 6, and 7, making them predictable. However, What pulls my attention, it is the similiraty between the tails of the distributions ,quality 3 and 8. The remark that naturally follows it is that the data, so far, does not provide convincing evidence to differentiate an extremely good wine from a really bad one. The minor changes in hue might not lead to a statistically significant difference; thus, preventing the model to forward accurate predictions. 
+
+### Comparing the Mean between Rating 3 and 8
+
+Since I consider a major vaccum the fact of not being able to set appart a high quality wine from a lesser one based on the data exploration, so far; a plot comparing the distributions between level 3 and 8 is enclosed. 95% confidence intervals for the means of each attribute is being estimated. 10,000 bootstrapped samples have been drawn to counteract the inaccuracy pushed by the small sample size in both ratings. 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA,fig.cap=paste("Figure 5.Confidence Intervals for the Means")}
+
+#groupwise mean
+d_feature_high <- d_feature %>%
+  filter(Rating == 8)
+#headTail(d_feature_high)
+
+d_feature_low <- d_feature %>%
+  filter(Rating == 3)
+#headTail(d_feature_low)
+
+m_high <-groupwiseMean(value ~ Attribute,
+              data = d_feature_high,
+              boot =TRUE,
+              R = 10000,
+              conf = 0.95,
+              digits = 3)
+#class(m_high) Making sure that the output is a data.frame
+m_low <-groupwiseMean(value ~ Attribute,
+                       data = d_feature_low,
+                       boot =TRUE,
+                       R = 10000,
+                       conf = 0.95,
+                       digits = 3)
+
+
+d = position_dodge(.5)    ### How much to jitter the points on the plot 
+
+p_mean_high <- ggplot(m_high, aes(x =Attribute, y = Mean, color = Attribute))+
+  geom_point(shape = 15, size =5,  position = d) + 
+  geom_errorbar(aes(ymin  = Trad.lower, ymax = Trad.upper), width = 0.5,size  = 0.7, position = d) +
+  theme_igray() + scale_colour_economist(stata=TRUE)+
+  theme(axis.title = element_text(face = "bold"),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none") +
+  ggtitle("Confidence Interval for the Mean\nRating 8")+
+  coord_flip()
+
+
+p_mean_low <- ggplot(m_low, aes(x =Attribute, y = Mean, color = Attribute))+
+  geom_point(shape = 15, size =5,  position = d) + 
+  geom_errorbar(aes(ymin  = Trad.lower, ymax = Trad.upper), width = 0.5,size  = 0.7, position = d) +
+  theme_igray()+ scale_colour_economist(stata=TRUE)+
+  theme(axis.title = element_text(face = "bold"),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none") +
+  ggtitle("Confidence Interval for the Mean\nRating 3")+
+  coord_flip()
+grid.arrange(p_mean_high, p_mean_low)
+```
+
+As expected, the distributions looks similar. Spread is higher in Rating 3, but not remarkably visually different
+
+### Main Takeaways from Plots.3
+
+* Distinctiveness is being observed in Rating, 5, 6 and 7. 
+
+* The distributions pertaining to Rating 3 and 8 are extremely similar,  a major setback. if the research question had dwell on the attributes that differentiate a high quality wine that a mediocre one; it had remain unanswered.
+
+## Deliberating about a Regression model
+
+When working with this type of data set, one is instinctively drifted toward regression models. A common approach would be to regress quality's numerical output against the already appointed meaningful predictors. Selecting the best fit is not the objective of the present assignment, but to illustrate exploratory technics that might lead us to the expected results. No doubt, my first task is to apply a suitable transformations to the data. All throughout the assignment, right-skewness has been a pervasive feature. The code has been gently borrowed^[http://rstudio-pubs-static.s3.amazonaws.com/1563_1ae2544c0e324b9bb7f6e63cf8f9e098.html] as it has proved to be effective, much more than that of my own device.
+
+### Transforming Univariate Distributions
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA, fig.cap=paste("Figure 6. Transformed Sulfur ")}
+
+skew.func <- function(c, x) (skewness(log(x + c)))^2
+best.c_tsd <- optimise(skew.func, c(1.00, 72.00), x = data$total.sulfur.dioxide)$minimum
+
+tsd.transformed<- log(data$total.sulfur.dioxide + best.c_tsd)
+plotNormalHistogram(tsd.transformed, col = "azure", linecol = "black", main = "Total.Sulfur.Dioxide \n Transformed")
+```
+
+As easily detectable, it has worked beautiful on our star predictor, total.sulfur.dioxide. Alas!  when dealing with the alcohol variable, it has been less competent.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA, fig.cap=paste("Figure 7.Transformed Alcohol")}
+best.c_al <- optimise(skew.func, c(8.40, 14.90), x = data$alcohol)$minimum
+alcohol.transformed <- log(data$alcohol + best.c_al)
+plotNormalHistogram(alcohol.transformed, col = "tomato", linecol = "black", main = "Alcohol\n Transformed")
+```
+
+###Ransacking a Linear Model, Checking Assumptions
+
+Nevertheless, I fit the model in order to carry through further exploratory analysis.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA}
+model.transformed<- lm(data$quality ~ tsd.transformed + alcohol.transformed)
+summary(model.transformed)
+```
+
+A glimpse over the model output:
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA}
+kable(head(broom::augment(model.transformed))[,1:7], caption = "Table 3.Tranformed Data - LM output ")
+```
+
+Exploratory visualizations are meant to shed light over the data, and the following display is up to the task: despite applied transformations, all what it should not be present in a linear model, it is indeed, there. Lack of independence, residuals non-scattered around zero, flagrant heteroscedasticity, well define patterns, large cook's distances evidencing influential points that distort the regression analysis. The graph furnishes a conclusive response: they might be an association present, but it is not linear.
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA, fig.cap= paste("Figure 8.Checking Residuals")}
+autoplot(model.transformed, ncol=2)
+```
+
+###Main Takeaways from Plots.4
+
+* Univariate distributions might require different transformations each, but where to draw the line? It might be the case that better inputs are needed to feed a proper model. Then, it is an issue that concerns data collection.
+
+*  Given the poorly obtained results when applying the linear model, a better approach might be to utilize more robust measures aka median or quantiles. Furthermore, since normal distribution parameters are not present, Non parametric models might come into consideration.
+
+## Final Plots and Summary
+
+###Plot 1
+My first choice is a 3D scatterplot which enables the user to grasp the data distribution of the response variable,*quality*, and the number of observations versus one numeric variable: *total.sulfur.dioxide*. Adding a second numerical variable, although feasible, would complicate the viewer, more than that it is not fit for the human eye.
+The plot is simple, cheerful, and clean, and allow us to distinguish:
+
+* Number of observations in the different ratings, including the scarcity of data in rating 3 and 8.
+* Outliers in Rating 7.
+* How far apart lies each observations within each particular rating. The spread is determined by the total sulfur dioxide content.
+* Similarities between level 3 and 8, a lasting point of concern. In order, to better visualize this last statement, a version of the plot is included in an interactive mode. I am convert after frequently dismissing this form of display. In fact, it helps!
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA, plot.cap = paste("Figure 9.Plot 1")}
+
+d_quality <- data %>% select(X1, quality, total.sulfur.dioxide) %>%
+  rename(N = X1)
+#headTail(d_quality)
+#scales::show_col(stata_pal("s1rcolor")(15))
+d_quality$ccolor[d_quality$quality == 3] <- "#ffff00"
+d_quality$ccolor[d_quality$quality == 4] <- "#00ff00"
+d_quality$ccolor[d_quality$quality == 5] <- "#0080ff"
+d_quality$ccolor[d_quality$quality == 6] <- "#ff00ff"
+d_quality$ccolor[d_quality$quality == 7] <- "#ff7f00"
+d_quality$ccolor[d_quality$quality == 8] <- "#ff0000"
+
+s3d <-with(d_quality, {
+  sc3d <- scatterplot3d(quality, N, total.sulfur.dioxide,
+                        color = ccolor,
+                        pch =16,
+                        main = "Vinho Verde Tinto by Quality\n plus\n Sulfure Dioxide Content")
+  legend("topright",  
+         bty = "n", title = "Rating",
+         c("3", "4", "5", "6", "7", "8"), 
+         fill = c("#ffff00", "#00ff00", "#0080ff",
+                  "#ff00ff", "#ff7f00", "#ff0000"))})
+
+```
+
+#### Plot 1, Interactive Mode
+
+Please feel free to pace the interaction at your best convenience.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA, plot.cap = paste("Figure 10.Plot 1 , Iteractive Mode")}
+d_inter <- data %>% 
+  select(X1, quality, total.sulfur.dioxide) %>%
+  mutate(Quality = as.numeric(quality),
+         Count = as.numeric(X1),
+         Sulfur = as.numeric(total.sulfur.dioxide),
+         Rating = factor(quality, levels = unique(quality))) %>%
+         select(-X1, -quality, -total.sulfur.dioxide) %>%
+         data.frame()
+
+plotids <- with(d_inter, plot3d(Quality, Count, Sulfur,
+                             type="s", col=as.numeric(Rating)))
+M <- r3dDefaults$userMatrix
+fn <- par3dinterp(time = (0:2)*0.75, userMatrix = list(M,
+                                      rotate3d(M, pi/2, 1, 0, 0),
+                                      rotate3d(M, pi/2, 0, 1, 0)) )
+rglwidget() %>%
+playwidget(par3dinterpControl(fn, 0, 3, steps=15),
+       step = 0.01, loop = TRUE, rate = 0.5)
+
+```
+
+### Plot 2
+
+Four statistically significant variables found in* Vinho Verde Tinto* are displayed in the following grid; the choice is based in above total explorations. The idea is to convey to the viewer the differences, or similarities in term of the selected chemical components that account for the rating of any wine under the *verde tinto* denomination of origin. . Density tiles are illustrative enough to enable us to distinguish:
+
+* Deviations in term of the selected chemical compounds are found mainly in rating 5, 6 and in lesser degree in rating 7, to a vanish point in rating 4.
+
+* There is no visible difference between rating 3 and 8. That is a major point, already mentioned, to address in the reflection section.
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA, fig.cap= paste("Figure 11. Portugal Map")}
+d_total.sulfur <- data %>% select(total.sulfur.dioxide, alcohol, quality, volatile.acidity, chlorides)
+p_total.sulfur <- ggplot(d_total.sulfur, aes(x = quality, y = total.sulfur.dioxide))+
+    stat_density_2d(geom = "tile",
+                    aes(fill = ..density..),
+                   contour = FALSE) +
+    scale_fill_viridis(direction = -1, option = "B")
+p_alcohol <- ggplot(d_total.sulfur, aes(x = quality, y = alcohol))+
+  stat_density_2d(geom = "tile",
+                  aes(fill = ..density..),
+                  contour = FALSE) +
+  scale_fill_viridis(direction = -1, option = "D")
+p_va <- ggplot(d_total.sulfur, aes(x = quality, y = volatile.acidity))+
+  stat_density_2d(geom = "tile",
+                  aes(fill = ..density..),
+                 contour = FALSE) +  
+  scale_fill_viridis(direction = -1, option = "C")
+p_cl <- ggplot(d_total.sulfur, aes(x = quality, y = chlorides))+
+  stat_density_2d(geom = "tile",
+                  aes(fill = ..density..),
+                  contour = FALSE) +
+scale_fill_viridis(direction = -1, option = "A")
+title=textGrob("Comparing Attributes across Qualities", gp=gpar(fontface="bold"))
+grid.arrange(p_total.sulfur, p_alcohol, p_va, p_cl, ncol = 2, top=title)
+```
+
+###Plot 3, Production by Region, Interactive Map 
+
+The notion of "appellation d'origine" implies for the connoisseur and wine amateur alike, the entrance to a dreamlike imagery populated by ripening varieties and pungent aromas. There is no earthly reason why Data Science should not be a part of the scene. Specially, being the tool that empowers me to provide a map where the attentive reader might found location and production of *Vinho Verde Tinto*.
+
+To this purpose, 2016-2017 data has been downloaded from the indicated official site^[http://www.vinhoverde.pt] and merge with the Portugal map data frame to be found in the Maps package. Some minor data tiding has taken place as illustrated in the attached code. Please feel free to place the mouse in the point of your interesting.
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA}
+dat <- read_excel("Production 1999-2016.xls")[949:988, ] #importing data from website
+#headTail(dat)
+#str(dat)
+#selecting col of interest, and creating ad-hoc data frame
+d_tinto <- dat %>% select(c(1,4)) %>%  #tidying data
+  "colnames<-"(c("region", "quantity"))%>%
+  mutate(production = gsub(" ", ",", as.character(quantity))) %>%
+  select(-quantity)
+#class(d_tinto)
+#headTail(d_tinto)
+#str(d_tinto)
+
+#Creating data frame from Map
+df_portugal <- world.cities %>% filter(country.etc == "Portugal")
+#headTail(df_portugal)
+#str(df_portugal)
+p_upper <- df_portugal %>% mutate(region = toupper(name)) # tranforming data to to merge
+#headTail(p_upper)
+
+#Merging both data frame
+df_merge <- inner_join(d_tinto, p_upper, by = "region") %>%
+  select(region, production, lat, long)
+#str(df_merge)
+#headTail(df_merge)
+
+#Plotting
+vinho_portugal <- map_data("world", "Portugal") %>% 
+  plot_ly(x = ~long, y = ~lat) %>%
+  add_polygons()%>%
+  add_markers(text = ~paste(region, "<br />", production), hoverinfo = "text", data = df_merge)%>%
+  layout(showlegend = FALSE, title = "Vinho Verde Tinto Production\nInteractive Map of Portugal")%>%
+  add_histogram2dcontour()
+vinho_portugal
+```
+
+## Reflections
+
+* As per the insights taken from the data exploration, 94% of produced wines under the denomination *Vinho Verde Tinto* would be rated as average. Minor quantities would be placed at the tails of the distribution as High and Low quality, respectively.
+
+* The content of the chemical components is visible in the average wines, but the data does not give any indication that allows us to infer what type and how much of a component of any given combination would make a good wine stand up. 
+
+* As per my understanding, the provided set is a reduced version of the original data collection. I sincerely hope so; otherwise, training a model with such a scant feedback would not be feasible.
+
